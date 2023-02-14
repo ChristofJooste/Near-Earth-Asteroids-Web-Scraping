@@ -1,0 +1,74 @@
+### This code was written by Christof Jooste of UCT and Coral G Pillay of WITS for Nicolas Erasmus at the South African Astronomical Observatory
+### to scrape the Birtwhistle catalogue for near-earth asteroids and output a text file containing only the relevant information of the asteroids
+
+import requests
+
+year = input("Please enter a year >>>   ")
+
+filename = "NEO " + year + ".txt"
+
+header = "Count\tObj_ID\tDate\t\t\t\tRA\t\tdec\t\t\tmag\t\tObserver Code\tMissing Mag?\tURL\n"
+
+f = open(filename, "w")
+f.write(header)
+f.close()
+
+url = "https://birtwhistle.org.uk/NEOCPObjects" + year + ".htm"
+
+first_scrape = requests.get(url)
+
+count = 0
+first_raw_html = first_scrape.text.split('<br>')
+
+f = open(filename, "a")
+
+for i, line in enumerate(first_raw_html):
+
+    line = line.strip()
+    columns = line.split('=')
+    
+    if ('MPEC' in line) and (year in line[0:4]):
+
+        new_url = columns[3].split('>')[0]
+        second_scrape = requests.get(new_url)
+
+        try:
+            second_raw_html = second_scrape.text.split('*')
+            second_raw_html = second_raw_html[1].split('\n')
+
+        except IndexError:
+
+            #print("error")
+            continue    
+
+        else:
+
+            obj_name = second_scrape.text.split('<title>')[1].split(' : ')[1].split('</title>')[0]
+            second_raw_html = second_scrape.text.split('*')
+            second_raw_html = second_raw_html[1].split('\n')
+
+            line_two_columns = second_raw_html[0]
+
+            trash = line_two_columns[0:2].strip()
+            date = line_two_columns[2:21].strip()
+            RA = line_two_columns[22:30].strip()
+            dec = line_two_columns[31:42].strip()
+            mag = line_two_columns[-15:][0:5].strip()
+            obs_code = line_two_columns[-3:].strip()
+
+            count = count + 1
+
+            if (mag == ''):
+                mag = '99.0'
+
+                output = str(count) + "\t" + obj_name + "\t" + date + "\t" + RA + "\t" + dec + "\t\t" + mag + "\t\t" + obs_code + "\t\t\t" + "True\t\t\t"
+            else:
+                output = str(count) + "\t" + obj_name + "\t" + date + "\t" + RA + "\t" + dec + "\t\t" + mag + "\t\t" + obs_code + "\t\t\t" + "False\t\t\t"
+
+            output = output + new_url
+
+            print(str(count) + "\t" + new_url + "\t" + line_two_columns)
+            
+            f.write(output + "\n")
+
+f.close()
